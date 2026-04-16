@@ -166,6 +166,8 @@ def build_conversation_run(config: AfterImageConfig) -> BuiltConversationRun:
         storage=storage,
         instruction_generator_callback=instruction_callback,
         respondent_prompt_modifier=respondent_prompt_modifier,
+        dedup=config.quality.dedup,
+        dedup_threshold=config.quality.dedup_threshold,
     )
 
     stopping_criteria, num_requested = build_stopping_criteria(

@@ -32,6 +32,7 @@ from .evaluator import (
 )
 from .key_management import SmartKeyPool
 from .monitoring import GenerationMonitor
+from .dedup import DuplicateDetector
 from .orchestrator import Orchestrator
 from .prompts import get_correspondent_instruction_generation_prompt
 from .providers import ChatSession, LLMFactory
@@ -144,6 +145,8 @@ class ConversationGenerator(BaseGenerator):
         instruction_generator_callback: BaseInstructionGeneratorCallback | None = None,
         respondent_prompt_modifier: BaseRespondentPromptModifierCallback | None = None,
         turn_hooks: ConversationTurnHooks | None = None,
+        dedup: bool = False,
+        dedup_threshold: float = 0.7,
     ):
         self.monitor: GenerationMonitor = (
             monitor or GenerationMonitor()
@@ -197,8 +200,11 @@ class ConversationGenerator(BaseGenerator):
         self.respondent_prompt_modifier = respondent_prompt_modifier
         self.turn_hooks = turn_hooks
 
-        # --- Quality gate (wraps evaluator) ---
-        self._quality_gate = QualityGate(evaluator=None)
+        # --- Quality gate (wraps evaluator + dedup) ---
+        dedup_detector = (
+            DuplicateDetector(threshold=dedup_threshold) if dedup else None
+        )
+        self._quality_gate = QualityGate(evaluator=None, dedup=dedup_detector)
         self.evaluator = None
         if auto_improve:
             evaluator_model_name = (

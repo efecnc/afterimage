@@ -258,6 +258,16 @@ class QualityConfig(BaseModel):
     auto_improve: bool = Field(
         default=False, description="Retry low-quality generations"
     )
+    dedup: bool = Field(
+        default=False,
+        description="Reject near-duplicate conversations using MinHash similarity",
+    )
+    dedup_threshold: float = Field(
+        default=0.7,
+        ge=0.1,
+        le=1.0,
+        description="Jaccard similarity threshold for duplicate rejection (0.0-1.0)",
+    )
 
 
 class AnalyticsConfig(BaseModel):
