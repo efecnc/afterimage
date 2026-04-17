@@ -1,0 +1,38 @@
+# A/B baseline config
+# Small demo corpus under examples/docs/mini/; full pipeline enabled
+# (persona + context + quality auto_improve) so A/B runs exercise every layer.
+
+generation:
+  num_dialogs: 200
+  max_turns: 3
+  max_concurrency: 5
+
+model:
+  provider: gemini
+  model_name: gemini-2.5-flash
+  api_key_env: GEMINI_API_KEY
+
+respondent:
+  system_prompt: |
+    You are a clear, careful expert. Answer grounded in the provided context
+    whenever it is relevant. Keep answers concise and correct. If the context
+    does not support a claim, say so explicitly.
+
+documents:
+  provider: directory
+  path: ../docs/mini
+
+context:
+  enabled: true
+  num_random_contexts: 2
+  n_instructions: 3
+
+personas:
+  enabled: true
+
+quality:
+  auto_improve: true
+
+output:
+  path: ./output/ab_baseline.jsonl
+  storage: jsonl
