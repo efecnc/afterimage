@@ -50,3 +50,44 @@ async def populate_personas_if_enabled(run: Any, cfg: Any) -> bool:
     )
     logger.info("pre-generated %d persona descriptions across provider", total)
     return True
+
+
+def install_dedup_gate(run: Any, threshold: float, window_size: int = 500) -> Any | None:
+    """Wrap the generator's storage with :class:`DedupStorage`.
+
+    Returns the installed :class:`DedupStorage` so callers can read
+    ``.accepted`` / ``.dropped`` after the run, or ``None`` when no embedding
+    provider is available (dedup is silently skipped).
+    """
+    from afterimage.dedup import DedupStorage
+
+    gen = run.generator
+    evaluator = getattr(gen, "evaluator", None) or getattr(gen, "_evaluator", None)
+    embedder = None
+    if evaluator is not None:
+        embedder = (
+            getattr(evaluator, "embedding_provider", None)
+            or getattr(evaluator, "_embedding_provider", None)
+            or getattr(evaluator, "_embedding", None)
+        )
+
+    if embedder is None:
+        logger.warning(
+            "dedup gate skipped: no embedding provider on evaluator "
+            "(enable auto_improve or supply embedding_provider to the generator)"
+        )
+        return None
+
+    wrapped = DedupStorage(
+        inner=gen.storage,
+        embedding_provider=embedder,
+        threshold=threshold,
+        window_size=window_size,
+    )
+    gen.storage = wrapped
+    logger.info(
+        "dedup gate installed: threshold=%.3f window_size=%d",
+        threshold,
+        window_size,
+    )
+    return wrapped

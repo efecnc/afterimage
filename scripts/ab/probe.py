@@ -229,8 +229,11 @@ async def _run(args: argparse.Namespace) -> int:
         out_jsonl.unlink()
     run.generator.storage = JSONLStorage(conversations_path=str(out_jsonl))
 
-    from ._setup import populate_personas_if_enabled
+    from ._setup import populate_personas_if_enabled, install_dedup_gate
     await populate_personas_if_enabled(run, cfg)
+    dedup = None
+    if args.dedup_threshold is not None:
+        dedup = install_dedup_gate(run, threshold=args.dedup_threshold)
 
     stopping_criteria = [
         c
@@ -270,6 +273,14 @@ async def _run(args: argparse.Namespace) -> int:
         "persona_unique": len(set(counters.personas)),
         "elapsed_s": elapsed,
     }
+    if dedup is not None:
+        raw["dedup_accepted"] = dedup.accepted
+        raw["dedup_dropped"] = dedup.dropped
+        logger.info(
+            "dedup gate: accepted=%d dropped=%d",
+            dedup.accepted,
+            dedup.dropped,
+        )
     (out_dir / "probe_counters.json").write_text(json.dumps(raw, indent=2) + "\n")
     return 0
 
@@ -283,6 +294,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out", required=True)
     p.add_argument("--verbose", "-v", action="store_true")
+    p.add_argument(
+        "--dedup-threshold",
+        type=float,
+        default=None,
+        dest="dedup_threshold",
+        help="Install in-process dedup at this cosine threshold (e.g. 0.92).",
+    )
     return p.parse_args(argv)
 
 
