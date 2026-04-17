@@ -229,8 +229,13 @@ async def _run(args: argparse.Namespace) -> int:
         out_jsonl.unlink()
     run.generator.storage = JSONLStorage(conversations_path=str(out_jsonl))
 
-    from ._setup import populate_personas_if_enabled
+    from ._setup import populate_personas_if_enabled, apply_retry_policy
     await populate_personas_if_enabled(run, cfg)
+    apply_retry_policy(
+        run,
+        max_retries=args.max_retries,
+        inject_judge_feedback=args.inject_judge_feedback,
+    )
 
     stopping_criteria = [
         c
@@ -283,6 +288,19 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out", required=True)
     p.add_argument("--verbose", "-v", action="store_true")
+    p.add_argument(
+        "--max-retries",
+        type=int,
+        default=None,
+        dest="max_retries",
+        help="Cap retries per dialog (default: unlimited).",
+    )
+    p.add_argument(
+        "--inject-judge-feedback",
+        action="store_true",
+        dest="inject_judge_feedback",
+        help="Inject lowest-scoring judge feedback into respondent prompt on retry.",
+    )
     return p.parse_args(argv)
 
 

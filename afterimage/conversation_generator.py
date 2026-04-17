@@ -51,6 +51,36 @@ from .types import (
 logger = logging.getLogger(__name__)
 
 
+def _summarize_judge_feedback(result: Any) -> str:
+    """Pick the two lowest-scoring criteria's feedback to steer the next retry.
+
+    Returns an empty string when the evaluation is absent or has no usable
+    per-criterion feedback.
+    """
+    ev = getattr(getattr(result, "conversation_row", None), "evaluation", None)
+    if ev is None:
+        return ""
+    criteria = ["factuality", "grounding", "relevance", "coherence", "helpfulness"]
+    entries: list[tuple[str, float, str]] = []
+    for name in criteria:
+        entry = getattr(ev, name, None)
+        if entry is None:
+            continue
+        score = getattr(entry, "score", None)
+        feedback = getattr(entry, "feedback", None)
+        if score is None or not feedback:
+            continue
+        entries.append((name, float(score), str(feedback)))
+    entries.sort(key=lambda t: t[1])
+    lowest = entries[:2]
+    if not lowest:
+        return ""
+    return "\n".join(
+        f"- **{name}** (score {score:.2f}): {feedback}"
+        for name, score, feedback in lowest
+    )
+
+
 def format_correspondent_followup_user_message(assistant_reply: str) -> str:
     """Shape the respondent's last reply for the correspondent chat on turn 2+.
 
@@ -144,6 +174,8 @@ class ConversationGenerator(BaseGenerator):
         instruction_generator_callback: BaseInstructionGeneratorCallback | None = None,
         respondent_prompt_modifier: BaseRespondentPromptModifierCallback | None = None,
         turn_hooks: ConversationTurnHooks | None = None,
+        max_retries: int | None = None,
+        inject_judge_feedback: bool = False,
     ):
         self.monitor: GenerationMonitor = (
             monitor or GenerationMonitor()
@@ -196,6 +228,8 @@ class ConversationGenerator(BaseGenerator):
         self.instruction_generator_callback = instruction_generator_callback
         self.respondent_prompt_modifier = respondent_prompt_modifier
         self.turn_hooks = turn_hooks
+        self.max_retries = max_retries
+        self.inject_judge_feedback = inject_judge_feedback
 
         # --- Quality gate (wraps evaluator) ---
         self._quality_gate = QualityGate(evaluator=None)
@@ -655,16 +689,35 @@ class ConversationGenerator(BaseGenerator):
 
                 # --- Quality gate: evaluate and retry if needed ---
                 result = await self._quality_gate.evaluate(conversation_row)
+                retries = 0
                 while QualityGate.should_retry(result):
+                    if (
+                        self.max_retries is not None
+                        and retries >= self.max_retries
+                    ):
+                        break
+                    retry_respondent_prompt = current_respondent_prompt
+                    if self.inject_judge_feedback:
+                        feedback_msg = _summarize_judge_feedback(result)
+                        if feedback_msg:
+                            retry_respondent_prompt = (
+                                f"{current_respondent_prompt}\n\n"
+                                "## Previous-attempt critique\n"
+                                "Your previous attempt was rejected by an "
+                                "independent reviewer for the issue(s) below. "
+                                "Address them directly in your next answer:\n"
+                                f"{feedback_msg}"
+                            )
                     conversation = await self.go(
                         turns=turns,
                         first_question=instruction,
                         check_for_near_duplicates=check_for_near_duplicates,
                         correspondent_prompt=correspondent_prompt,
-                        respondent_prompt=current_respondent_prompt,
+                        respondent_prompt=retry_respondent_prompt,
                     )
                     conversation_row = build_conversation_row(conversation)
                     result = await self._quality_gate.evaluate(conversation_row)
+                    retries += 1
 
                 yield result.conversation_row
         else:

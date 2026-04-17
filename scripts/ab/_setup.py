@@ -50,3 +50,24 @@ async def populate_personas_if_enabled(run: Any, cfg: Any) -> bool:
     )
     logger.info("pre-generated %d persona descriptions across provider", total)
     return True
+
+
+def apply_retry_policy(
+    run: Any,
+    max_retries: int | None = None,
+    inject_judge_feedback: bool = False,
+) -> bool:
+    """Override retry cap and feedback-injection flags on the generator."""
+    if max_retries is None and not inject_judge_feedback:
+        return False
+    gen = run.generator
+    if max_retries is not None:
+        gen.max_retries = max_retries
+    if inject_judge_feedback:
+        gen.inject_judge_feedback = True
+    logger.info(
+        "retry policy: max_retries=%s inject_judge_feedback=%s",
+        gen.max_retries,
+        gen.inject_judge_feedback,
+    )
+    return True
