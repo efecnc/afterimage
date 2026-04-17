@@ -15,11 +15,17 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-async def populate_personas_if_enabled(run: Any, cfg: Any) -> bool:
+async def populate_personas_if_enabled(
+    run: Any,
+    cfg: Any,
+    n_iterations: int | None = None,
+) -> bool:
     """Populate the callback's document provider with personas when enabled.
 
     Returns True when personas were generated, False when skipped (not enabled,
-    wrong callback type, or provider missing).
+    wrong callback type, or provider missing). When ``n_iterations`` > 0, the
+    base personas are tree-expanded — used by fix 4 to contrast the convergent
+    vs orthogonal expansion prompts.
     """
     if not getattr(getattr(cfg, "personas", None), "enabled", False):
         return False
@@ -42,8 +48,12 @@ async def populate_personas_if_enabled(run: Any, cfg: Any) -> bool:
         model_name=cfg.model.model_name,
         model_provider_name=cfg.model.provider,
     )
-    logger.info("pre-generating personas for %d docs", len(provider.get_all()))
-    await persona_gen.generate_from_documents(provider)
+    logger.info(
+        "pre-generating personas for %d docs (n_iterations=%s)",
+        len(provider.get_all()),
+        n_iterations,
+    )
+    await persona_gen.generate_from_documents(provider, n_iterations=n_iterations)
 
     total = sum(
         sum(len(e.descriptions) for e in d.personas) for d in provider.get_all()

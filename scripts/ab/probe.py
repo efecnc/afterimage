@@ -230,7 +230,7 @@ async def _run(args: argparse.Namespace) -> int:
     run.generator.storage = JSONLStorage(conversations_path=str(out_jsonl))
 
     from ._setup import populate_personas_if_enabled
-    await populate_personas_if_enabled(run, cfg)
+    await populate_personas_if_enabled(run, cfg, n_iterations=args.persona_iterations)
 
     stopping_criteria = [
         c
@@ -283,6 +283,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out", required=True)
     p.add_argument("--verbose", "-v", action="store_true")
+    p.add_argument(
+        "--persona-iterations",
+        type=int,
+        default=None,
+        dest="persona_iterations",
+        help="Tree-expand persona pool this many levels (None = no expansion).",
+    )
     return p.parse_args(argv)
 
 

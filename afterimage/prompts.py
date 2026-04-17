@@ -227,10 +227,18 @@ Each persona should be written on a separate line, and each line must begin with
 </text>
 """
 
-persona_to_persona_generation_prompt_tmpl = """Generate exactly five high-quality persona descriptions that are in **close relation** to the following personas (e.g., colleagues, clients, mentors, collaborators, counterparts, or relevant stakeholders). Each persona description should be **no longer than 40 words**, describing the individual’s background, interests, expertise level, experiences, goals, and/or desires. Personas should be **descriptive** and as **specific** as possible. They must never **explicitly** refer to the provided personas but remain highly relevant and connected to their roles. 
-Persona descriptions should be nuanced, but they must not contain personal names or other types of PIIs.
+persona_to_persona_generation_prompt_tmpl = """Generate exactly five high-quality persona descriptions that are deliberately **orthogonal** to the following seed personas — not colleagues, clients, or stakeholders of them, but a distinctly different audience who would still engage with the same subject matter. Each new persona should **rotate on a different axis** from the seeds along at least two of these dimensions:
 
-Each persona should be written on a separate line, and each line must begin with "Persona N:", where N is the enumeration starting at 1. Your output must not include any preamble, explanations, or commentary --output only the persona descriptions.
+- **Role / profession** (e.g. academic ↔ practitioner ↔ hobbyist ↔ regulator ↔ journalist ↔ student)
+- **Industry or domain** (shift to a neighbouring industry where the same topic surfaces for different reasons)
+- **Seniority / expertise level** (novice ↔ mid-career ↔ expert ↔ executive)
+- **Motivation** (curiosity ↔ compliance ↔ cost ↔ safety ↔ career advancement ↔ skeptic)
+- **Cultural or geographic context** (a different market, regulatory regime, or language community)
+- **Generation / life stage** (early career ↔ mid-career ↔ late career ↔ retired learner)
+
+For each generated persona, the combination of axes you rotate on should be **different from the other four** so the five new personas are also orthogonal to each other. Each description should be no longer than **40 words**, covering background, motivation, expertise level, and goals. They must never explicitly refer to the seed personas or mirror their framing, and must not contain personal names or other PII.
+
+Each persona on its own line, starting with "Persona N:" where N enumerates from 1. Output only the persona descriptions — no preamble or commentary.
 
 <personas>
 {personas}
