@@ -229,6 +229,9 @@ async def _run(args: argparse.Namespace) -> int:
         out_jsonl.unlink()
     run.generator.storage = JSONLStorage(conversations_path=str(out_jsonl))
 
+    from ._setup import populate_personas_if_enabled
+    await populate_personas_if_enabled(run, cfg)
+
     stopping_criteria = [
         c
         for c in run.stopping_criteria

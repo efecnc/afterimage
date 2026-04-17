@@ -75,6 +75,9 @@ async def _run_one(
     run = build_conversation_run(cfg)
     run.generator.storage = JSONLStorage(conversations_path=str(out_path))
 
+    from ._setup import populate_personas_if_enabled
+    await populate_personas_if_enabled(run, cfg)
+
     # Rebuild stopping criteria for the requested N (override YAML num_dialogs).
     from afterimage.callbacks import FixedNumberStoppingCallback
 

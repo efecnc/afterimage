@@ -45,3 +45,5 @@ output/
 # storage
 *.db
 *.pem
+ab_runs/
+.coverage
