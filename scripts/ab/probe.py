@@ -229,8 +229,15 @@ async def _run(args: argparse.Namespace) -> int:
         out_jsonl.unlink()
     run.generator.storage = JSONLStorage(conversations_path=str(out_jsonl))
 
-    from ._setup import populate_personas_if_enabled
+    from ._setup import populate_personas_if_enabled, apply_decode_policy
     await populate_personas_if_enabled(run, cfg)
+    apply_decode_policy(
+        run,
+        correspondent_temperature=args.correspondent_temp,
+        respondent_temperature=args.respondent_temp,
+        correspondent_top_p=args.top_p,
+        respondent_top_p=args.top_p,
+    )
 
     stopping_criteria = [
         c
@@ -283,6 +290,27 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out", required=True)
     p.add_argument("--verbose", "-v", action="store_true")
+    p.add_argument(
+        "--correspondent-temp",
+        type=float,
+        default=None,
+        dest="correspondent_temp",
+        help="Override correspondent (user-sim) decode temperature.",
+    )
+    p.add_argument(
+        "--respondent-temp",
+        type=float,
+        default=None,
+        dest="respondent_temp",
+        help="Override respondent (expert) decode temperature.",
+    )
+    p.add_argument(
+        "--top-p",
+        type=float,
+        default=None,
+        dest="top_p",
+        help="Top-p applied to both correspondent and respondent decodes.",
+    )
     return p.parse_args(argv)
 
 

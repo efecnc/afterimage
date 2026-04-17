@@ -144,6 +144,10 @@ class ConversationGenerator(BaseGenerator):
         instruction_generator_callback: BaseInstructionGeneratorCallback | None = None,
         respondent_prompt_modifier: BaseRespondentPromptModifierCallback | None = None,
         turn_hooks: ConversationTurnHooks | None = None,
+        correspondent_temperature: float | None = None,
+        respondent_temperature: float | None = None,
+        correspondent_top_p: float | None = None,
+        respondent_top_p: float | None = None,
     ):
         self.monitor: GenerationMonitor = (
             monitor or GenerationMonitor()
@@ -196,6 +200,10 @@ class ConversationGenerator(BaseGenerator):
         self.instruction_generator_callback = instruction_generator_callback
         self.respondent_prompt_modifier = respondent_prompt_modifier
         self.turn_hooks = turn_hooks
+        self.correspondent_temperature = correspondent_temperature
+        self.respondent_temperature = respondent_temperature
+        self.correspondent_top_p = correspondent_top_p
+        self.respondent_top_p = respondent_top_p
 
         # --- Quality gate (wraps evaluator) ---
         self._quality_gate = QualityGate(evaluator=None)
@@ -306,8 +314,18 @@ class ConversationGenerator(BaseGenerator):
                 await self.key_pool.areport_error(api_key)
             raise
 
-    async def create_model(self, prompt: str) -> ChatSession:
-        """Creates and initializes a chat model with the given prompt."""
+    async def create_model(
+        self,
+        prompt: str,
+        temperature: float | None = None,
+        top_p: float | None = None,
+    ) -> ChatSession:
+        """Creates and initializes a chat model with the given prompt.
+
+        ``temperature`` / ``top_p``, when provided, are passed to the
+        underlying provider's ``astart_chat`` so each role (correspondent vs
+        respondent) can run with a different decode policy.
+        """
         start_time = time.time()
         api_key: str | None = None
         try:
@@ -321,7 +339,12 @@ class ConversationGenerator(BaseGenerator):
                 **self.llm_factory_kwargs,
             )
 
-            chat = await model.astart_chat()
+            chat_kwargs: dict[str, Any] = {}
+            if temperature is not None:
+                chat_kwargs["temperature"] = temperature
+            if top_p is not None:
+                chat_kwargs["top_p"] = top_p
+            chat = await model.astart_chat(**chat_kwargs)
 
             if self.monitor:
                 self.monitor.record_metric(
@@ -463,8 +486,16 @@ class ConversationGenerator(BaseGenerator):
             if respondent_prompt is None:
                 respondent_prompt = self.respondent_prompt
 
-            correspondent = await self.create_model(correspondent_prompt)
-            respondent = await self.create_model(respondent_prompt)
+            correspondent = await self.create_model(
+                correspondent_prompt,
+                temperature=self.correspondent_temperature,
+                top_p=self.correspondent_top_p,
+            )
+            respondent = await self.create_model(
+                respondent_prompt,
+                temperature=self.respondent_temperature,
+                top_p=self.respondent_top_p,
+            )
 
             if first_question is None:
                 if th:

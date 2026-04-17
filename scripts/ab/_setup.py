@@ -50,3 +50,41 @@ async def populate_personas_if_enabled(run: Any, cfg: Any) -> bool:
     )
     logger.info("pre-generated %d persona descriptions across provider", total)
     return True
+
+
+def apply_decode_policy(
+    run: Any,
+    correspondent_temperature: float | None = None,
+    respondent_temperature: float | None = None,
+    correspondent_top_p: float | None = None,
+    respondent_top_p: float | None = None,
+) -> bool:
+    """Set per-role decode parameters on the generator; no-op when all are None."""
+    if all(
+        v is None
+        for v in (
+            correspondent_temperature,
+            respondent_temperature,
+            correspondent_top_p,
+            respondent_top_p,
+        )
+    ):
+        return False
+
+    gen = run.generator
+    if correspondent_temperature is not None:
+        gen.correspondent_temperature = correspondent_temperature
+    if respondent_temperature is not None:
+        gen.respondent_temperature = respondent_temperature
+    if correspondent_top_p is not None:
+        gen.correspondent_top_p = correspondent_top_p
+    if respondent_top_p is not None:
+        gen.respondent_top_p = respondent_top_p
+    logger.info(
+        "decode policy: corr_temp=%s resp_temp=%s corr_top_p=%s resp_top_p=%s",
+        gen.correspondent_temperature,
+        gen.respondent_temperature,
+        gen.correspondent_top_p,
+        gen.respondent_top_p,
+    )
+    return True
