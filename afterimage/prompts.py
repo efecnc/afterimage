@@ -153,20 +153,21 @@ Use the following context to make the instructions realistic, grounded in the do
 
 default_respondent_prompt_with_context = """{prompt}
 
-Below is the context that may be helpful in answering the questions:  
+Below is the source material you must ground your answer in:
 
-## Context  
-The following text chunk or chunks are provided to help you answer the questions:
+## Source Material
 <context>
 {context}
 </context>
 
-## Rules
-1. Your answers must be based on the information provided in the context above. However, under no circumstances should you explicitly mention or refer to the context itself in your responses.  
-2. You must not use phrases like 'I cannot do this,' 'Consult an expert,' or 'I cannot provide advice on this matter.' Instead, craft clear, thoughtful, and contextually relevant answers to the best of your ability.  
-3. Always respond in the same language as the context and the question when the context carries readable prose; if the context is empty or language-neutral, answer in the same language as the user's question, or **English** if the question language is unclear.
+## Grounding rules
+1. **Every factual claim** you make that comes from the source material must be supported by a quoted span from that material. Wrap the exact supporting text in `<quote>...</quote>` tags inline with your prose. Quote only what is literally in the source; do not paraphrase inside quote tags.
+2. **If the source material does not cover the question**, say so explicitly with a phrase like "the source material does not cover X" and then answer only at the level the source actually supports. Do not fabricate specifics (numbers, names, dates, procedures) that are not in the quoted spans.
+3. **Non-factual connective prose** (explanations, structure, tone) does not need quotes — only claims that assert information.
+4. Keep answers natural and conversational around the quotes; the quotes are inline evidence, not a separate citation list.
+5. Respond in the same language as the question. If the question language is unclear, use the language of the source material; otherwise English.
 
-Your primary goal is to deliver accurate, contextually grounded, and professional answers that meet the needs of the question."""
+Your primary goal is to deliver answers that are **verifiably grounded** in the source material — the reader should be able to trace every factual claim back to a quoted span, and refusals should be specific to what the source does not cover."""
 
 generic_prefix = "You are an expert assistant with a deep understanding of various topics and the ability to provide detailed, insightful, and accurate answers."
 
@@ -202,19 +203,19 @@ For each criterion, give a score between -0.5 and 0.5. Negative scors will be su
 default_rag_respondent_prompt_with_context = """
 {prompt}
 
-Below is relevant information retrieved from our knowledge base that may help answer the question:
+Below is relevant information retrieved from our knowledge base:
 <context>
 {context}
 </context>
 
-## Rules
-1. Base your response primarily on the retrieved information above.
-2. If the retrieved information is insufficient, acknowledge this and provide a general response.
-3. Stay focused on the specific question asked.
-4. Maintain the same tone and expertise level as specified in your role.
-5. Never mention that you are using RAG or retrieved information - simply incorporate the knowledge naturally.
+## Grounding rules
+1. **Every factual claim** you make that comes from the retrieved information must be supported by a quoted span. Wrap the exact supporting text in `<quote>...</quote>` tags inline. Quote only what is literally there; do not paraphrase inside quote tags.
+2. **If the retrieved information does not cover the question**, say so explicitly (e.g., "the retrieved material does not cover X") and only answer at the level the retrieved context actually supports. Do not invent specifics (numbers, names, dates, procedures) that are not in the quoted spans.
+3. Non-factual connective prose (explanations, structure) does not need quotes — only claims that assert information.
+4. Stay focused on the specific question asked.
+5. Respond in the same language as the question; otherwise match the retrieved material's language, else English.
 
-Remember to provide accurate, contextually relevant answers while maintaining your expert persona."""
+Your primary goal is to deliver answers that are **verifiably grounded** — every factual claim traces to a quoted span, and refusals pinpoint exactly what the retrieved material does not cover."""
 
 text_to_persona_generation_prompt_tmpl = """Generate exactly five high-quality persona descriptions that are likely to engage with the following text in some way (e.g., read, write, like, dislike etc.). Each persona description should be **no longer than 40 words**, describing the individual’s background, interests, expertise level, experiences, goals, and/or desires. Personas should be **descriptive** and as **specific** as possible. They must never **explicitly** refer to provided text but be highly relevant to their contents.
 Persona descriptions should be nuanced, but they must not contain personal names or other types of PIIs.
